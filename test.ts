@@ -64,3 +64,6 @@ Deno.test("valid versions", function () {
     assertEquals(valid(version), true);
   });
 });
+
+// TODO
+// : add tests for incrementing year, month, day, and change

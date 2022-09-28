@@ -12,6 +12,7 @@ export const valid = (version: string): boolean => regex.test(String(version));
 export interface Options {
   coerce?: string;
   increment?: string;
+  initialize?: boolean;
   parse?: string;
 }
 
@@ -33,7 +34,7 @@ export class ChronVer {
   year!: number;
 
   /// helper parameters
-  __extra?: string;
+  __extra?: string | null;
   __increment?: number | null;
   __original?: string;
 
@@ -43,86 +44,38 @@ export class ChronVer {
     else if (typeof version !== "string")
       throw new TypeError(`Invalid Version: ${version}`);
 
-    if (!(this instanceof ChronVer))
-      return new ChronVer(version, options);
-
     const match = version.trim().match(regex);
 
     if (!match)
       throw new TypeError(`Invalid Version: ${version}`);
 
     if (options) {
-      const { coerce, increment, parse } = options;
+      const { increment, initialize } = options;
 
-      if (coerce) {
-        this.coerce(coerce);
+      if (initialize) {
+        this.initialize();
         return this._returnThis();
       }
 
-      if (parse) {
-        this.parse(parse);
-        return this._returnThis();
-      }
-
-      if (increment === "" || increment === "change" && !version)
-        return this.initialize();
-
-      if (increment)
+      if (increment) {
+        this._coerce(version);
         this.increment(options.increment);
+
+        return this._returnThis();
+      }
     }
 
     if (version)
-      this.parse(version);
+      this._parse(version);
 
     return this._returnThis();
   }
 
-  _format() {
-    const { change } = this.processChange(this.change); // TODO: `toIncrement` is never used
-
-    switch(true) {
-      case this.year <= 1970:
-      case this.month <= 0:
-      case this.day <= 0:
-      case isNaN(this.year):
-      case isNaN(this.month):
-      case isNaN(this.day): {
-        return this.coerce(`${this.year}.${this.month}.${this.day}`);
-      }
-
-      default: {
-        this.version =
-          this.year + "." +
-          this.processMonth(this.month) + "." +
-          this.processDay(this.day).day +
-          (this.__extra || "") +
-          (Number(change) && Number(change) > 0 ? `.${change}` : "");
-
-        this.raw = this.version;
-        return this;
-      }
-    }
-  }
-
-  _returnThis() {
-    delete this.__extra;
-    delete this.__increment;
-    delete this.__original;
-
-    return this._sort();
-  }
-
-  _sort() {
-    return orderObject(this);
-  }
-
-  coerce(version: string) {
+  _coerce(version: string) {
     const regexMatches = version.trim().split(".");
 
     switch(true) {
       /// ignore weird inputs
-      case regexMatches.length !== 3:
-      case String(+regexMatches[0]).length !== 4:
       case +regexMatches[0] <= 0:
       case +regexMatches[1] <= 0:
       case +regexMatches[2] <= 0: {
@@ -137,7 +90,20 @@ export class ChronVer {
     const versionYear = +regexMatches[0];
     const versionMonth = +regexMatches[1];
     const versionDay = +regexMatches[2];
-    const versionFinal = `${versionYear}.${this.processMonth(versionMonth)}.${this.processDay(versionDay).day}`;
+    let i = 0;
+
+    while (i < 3) {
+      i++;
+      regexMatches.shift();
+    }
+
+    const versionFinal = regexMatches.length ?
+      `${versionYear}.${this.processMonth(versionMonth)}.${this.processDay(versionDay).day}.${regexMatches.join(".")}` :
+      `${versionYear}.${this.processMonth(versionMonth)}.${this.processDay(versionDay).day}`;
+
+    this.__extra = regexMatches.length ?
+      regexMatches.join(".") :
+      null;
 
     this.change = 0;
     this.day = versionDay;
@@ -149,100 +115,36 @@ export class ChronVer {
     return this;
   }
 
-  increment(incrementType?: string) {
-    let versionChange = null;
-    let versionIncrement = null;
+  _format() {
+    const { change } = this.processChange(this.change);
 
-    if (incrementType && incrementType === "change") {
-      const { change, toIncrement } = this.processChange(this.version);
-
-      versionChange = change;
-      versionIncrement = toIncrement;
-    }
-
-    if (this.change)
-      versionChange = this.change;
-
-    if (this.__increment)
-      versionIncrement = this.__increment;
-
-    switch(incrementType) {
-      case "day": {
-        if (versionIncrement)
-          this.day = versionIncrement + 1;
-        else
-          this.day++;
-
-        break;
-      }
-
-      case "month": {
-        if (versionIncrement)
-          this.month = versionIncrement + 1;
-        else
-          this.month++;
-
-        break;
-      }
-
-      case "year": {
-        if (versionIncrement)
-          this.year = versionIncrement + 1;
-        else
-          this.year++;
-
-        break;
-      }
-
-      case "change":
-      case "package": {
-        if (typeof this.change === "number")
-          this.change++;
-        else {
-          this.change = [
-            versionChange && versionChange > 0 ?
-              versionChange :
-              "",
-            versionIncrement && Number(versionIncrement) ?
-              (versionIncrement + 1) :
-              ""
-          ].join("")
-        }
-
-        break;
+    switch(true) {
+      case this.year <= 1970:
+      case this.month <= 0:
+      case this.day <= 0:
+      case isNaN(this.year):
+      case isNaN(this.month):
+      case isNaN(this.day): {
+        return this._coerce(`${this.year}.${this.month}.${this.day}`);
       }
 
       default: {
-        break;
+        this.version =
+          this.year + "." +
+          this.processMonth(this.month) + "." +
+          this.processDay(this.day).day +
+          // this.__extra !== (null || undefined) ?
+          //   `.${this.__extra}` :
+          //   "" +
+          (Number(change) > 0 ? `.${change}` : "");
+
+        this.raw = this.version;
+        return this;
       }
     }
-
-    this.raw = this.version;
-
-    if (Number(this.change))
-      this.change = Number(this.change);
-
-    this._format();
-    return this;
   }
 
-  initialize() {
-    const versionYear = +new Date().getFullYear();
-    const versionMonth = +new Date().getMonth() + 1;
-    const versionDay = +new Date().getDate();
-    const version = `${versionYear}.${this.processMonth(versionMonth)}.${this.processDay(versionDay).day}`;
-
-    this.change = 0;
-    this.day = versionDay;
-    this.month = versionMonth;
-    this.raw = version;
-    this.version = version;
-    this.year = versionYear;
-
-    return this;
-  }
-
-  parse(version: string | Version | null): ChronVer | null {
+  _parse(version: string | Version | null): ChronVer | null {
     if (!version)
       return null;
 
@@ -291,59 +193,166 @@ export class ChronVer {
     return this;
   }
 
+  _returnThis() {
+    delete this.__extra;
+    delete this.__increment;
+    delete this.__original;
+
+    return orderObject(this);
+  }
+
+  increment(incrementType?: string) {
+    let versionChange = null;
+    let versionIncrement = null;
+
+    if (incrementType && incrementType === "change") {
+      const { change, toIncrement } = this.processChange(this.version);
+
+      versionChange = change;
+      versionIncrement = toIncrement;
+
+      if (String(change).match(/\./g))
+        incrementType = "day"; // we are most likely incrementing a date
+    }
+
+    if (this.change)
+      versionChange = this.change;
+
+    if (this.__increment)
+      versionIncrement = this.__increment;
+
+    switch(incrementType) {
+      case "day": {
+        if (versionIncrement)
+          this.day = versionIncrement + 1;
+        else
+          this.day++;
+
+        this._format();
+        break;
+      }
+
+      case "month": {
+        if (versionIncrement)
+          this.month = versionIncrement + 1;
+        else
+          this.month++;
+
+        break;
+      }
+
+      case "year": {
+        if (versionIncrement)
+          this.year = versionIncrement + 1;
+        else
+          this.year++;
+
+        break;
+      }
+
+      case "change":
+      default: {
+        if (versionChange && versionIncrement) {
+          this.raw = [
+            String(versionChange).length > 0 ?
+              versionChange :
+              "",
+            Number(versionIncrement) ?
+              versionIncrement + 1 :
+              ""
+          ].join("");
+
+          this.version = this.raw;
+        } else if (Number(this.change)) {
+          this.change = Number(this.change) + 1;
+        }
+
+        break;
+      }
+    }
+
+    this.raw = this.version;
+
+    if (Number(this.change))
+      this.change = Number(this.change);
+
+    // this._format();
+    return this;
+  }
+
+  initialize() {
+    const versionYear = +new Date().getFullYear();
+    const versionMonth = +new Date().getMonth() + 1;
+    const versionDay = +new Date().getDate();
+    const version = `${versionYear}.${this.processMonth(versionMonth)}.${this.processDay(versionDay).day}`;
+
+    this.change = 0;
+    this.day = versionDay;
+    this.month = versionMonth;
+    this.raw = version;
+    this.version = version;
+    this.year = versionYear;
+
+    return this;
+  }
+
   processChange(change: number | string): { change: number | string; toIncrement: number | null; } {
     const toIncrement = null;
 
-    if (typeof change === "number") {
+    if (Number(change)) {
       if (change === 0) {
         return {
-          change: "",
+          change,
           toIncrement
         };
       } else {
         return {
-          change: String(change).length > 0 ? change : "",
+          change: String(change).length > 0 ? change : 0,
           toIncrement
         };
       }
-    } else if (change && change.length > 0) {
-      const changesetIdentifier = String(change).split(separatorRegex);
-      const lastElement = changesetIdentifier.slice(-1)[0];
-      const changesetIdentifierSansLastElement = changesetIdentifier.filter(arrayItem => arrayItem !== lastElement).join("");
-
-      if (changesetIdentifier.length > 0) {
-        if (Number(lastElement)) {
-          return {
-            change: changesetIdentifierSansLastElement,
-            toIncrement: Number(lastElement)
-          };
-        } else {
-          return {
-            change: changesetIdentifierSansLastElement + lastElement,
-            toIncrement
-          };
-        }
-      } else {
-        return {
-          change: 0,
-          toIncrement
-        };
-      }
-    } else {
-      return {
-        change: 0,
-        toIncrement
-      };
     }
+
+    const changesetIdentifier = String(change).split(separatorRegex);
+    const lastElement = changesetIdentifier.slice(-1)[0];
+    const changesetIdentifierSansLastElement = removeItemOnce(changesetIdentifier, (changesetIdentifier.length - 1));
+
+    function removeItemOnce(arr: Array<unknown>, value: number) {
+      const index = value;
+
+      if (index > -1)
+        arr.splice(index, 1);
+
+      return arr.join("");
+    }
+
+    if (changesetIdentifier.length > 0) {
+      if (Number(lastElement)) {
+        return {
+          change: changesetIdentifierSansLastElement,
+          toIncrement: Number(lastElement)
+        };
+      } else {
+        return {
+          change: changesetIdentifierSansLastElement + lastElement,
+          toIncrement
+        };
+      }
+    }
+
+    return {
+      change: 0,
+      toIncrement
+    };
   }
 
   processDay(day: number | string): { day: number | string; extra: string; } {
-    if (typeof day === "number") {
+    if (Number(day)) {
       if (+day === 0)
         day = 1;
 
       return {
-        day: String(day).length > 1 ? day : "0" + day,
+        day: String(day).length > 1 ? day : `0${day}`,
         extra: ""
       };
     } else {
@@ -364,7 +373,7 @@ export class ChronVer {
 
     return String(month).length > 1 ?
       month :
-      "0" + month;
+      `0${month}`;
   }
 }
 
