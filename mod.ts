@@ -4,20 +4,20 @@
 //// export
 
 export class ChronVer {
-  /** changeset number (0 if not specified) **/
+  /** changeset number (0 if not specified) */
   readonly changeset: number;
-  /** day component (1-31) **/
+  /** day component (1-31) */
   readonly day: number;
-  /** feature name (if specified) **/
+  /** feature name (if specified) */
   readonly feature?: string;
-  /** whether this is a breaking change **/
+  /** whether this is a breaking change */
   readonly isBreaking: boolean;
-  /** month component (1-12) **/
+  /** month component (1-12) */
   readonly month: number;
-  /** year component **/
+  /** year component */
   readonly year: number;
 
-  /** Creates a new version **/
+  /** Creates a new version */
   constructor(version: string) {
     const regex = /^(\d{4})\.(?:0[1-9]|1[0-2])\.(?:0[1-9]|[12]\d|3[01])(?:\.(\d+))?(?:-(break|[a-zA-Z0-9-]+)(?:\.(\d+))?)?$/;
     const match = version.match(regex);
@@ -44,7 +44,7 @@ export class ChronVer {
 
   /// methods
 
-  /** Compares versions **/
+  /** Compares versions */
   compare(other: ChronVer): number {
     const dateComparison = [
       this.year - other.year,
@@ -63,7 +63,7 @@ export class ChronVer {
     return 0;
   }
 
-  /** Outputs a version in string format **/
+  /** Outputs a version in string format */
   toString(): string {
     const base = `${this.year}.${String(this.month).padStart(2, "0")}.${String(this.day).padStart(2, "0")}`;
     const changesetStr = this.changeset > 0 ? `.${this.changeset}` : "";
@@ -75,7 +75,7 @@ export class ChronVer {
 
   /// private method
 
-  /** Validates version **/
+  /** Validates version */
   private validate(): void {
     if (this.year < 1)
       throw new Error("Year must be positive");
