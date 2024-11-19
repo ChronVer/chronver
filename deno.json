@@ -2,5 +2,5 @@
   "exports": "./mod.ts",
   "license": "MIT",
   "name": "@chronver/chronver",
-  "version": "1.0.2"
+  "version": "1.0.3"
 }

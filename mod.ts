@@ -3,6 +3,58 @@
 
 //// export
 
+/**
+ * The Chronologic Version parser.
+ *
+ * ```ts
+ * import { ChronVer } from "jsr:@chronver/chronver";
+ *
+ * // create new version
+ * const version = new ChronVer("2024.04.03.1");
+ *
+ * // convert to string
+ * console.log(version.toString()); // "2024.04.03.1"
+ *
+ * // access version components
+ * console.log(version.year);      // 2024
+ * console.log(version.month);     // 4
+ * console.log(version.day);       // 3
+ * console.log(version.changeset); // 1
+ * ```
+ *
+ * ### Validation
+ *
+ * ```ts
+ * console.log(ChronVer.isValid("2024.04.03")); // true
+ * console.log(ChronVer.isValid("invalid"));    // false
+ * console.log(ChronVer.isValid("2024.13.19")); // false (invalid month)
+ * ```
+ *
+ * ### Comparison
+ *
+ * ```ts
+ * const v1 = "2024.04.03.1";
+ * const v2 = "2024.04.03.2";
+ *
+ * console.log(ChronVer.compare(v1, v2)); // -1 (v1 is older than v2)
+ * console.log(ChronVer.compare(v2, v1)); // 1  (v2 is newer than v1)
+ * console.log(ChronVer.compare(v1, v1)); // 0  (versions are equal)
+ * ```
+ *
+ * ### Feature Branches and Breaking Changes
+ *
+ * ```ts
+ * // feature branch
+ * const feature = new ChronVer("2024.04.03-feature");
+ * console.log(feature.feature);    // "feature"
+ * console.log(feature.toString()); // "2024.04.03-feature"
+ *
+ * // breaking change
+ * const breaking = new ChronVer("2024.04.03.1-break");
+ * console.log(breaking.isBreaking); // true
+ * console.log(breaking.toString()); // "2024.04.03.1-break"
+ * ```
+ */
 export class ChronVer {
   /** changeset number (0 if not specified) */
   readonly changeset: number;
