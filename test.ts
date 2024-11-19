@@ -1,69 +1,132 @@
 
-/// native
 
-import { assertEquals, assertThrows } from "std/testing/asserts.ts";
 
-/// util
+//// import
 
-import * as chronver from "./mod.ts";
+import { assertEquals, assertThrows } from "jsr:@std/assert";
 
-/// program
+//// util
 
-Deno.test("invalid versions", function () {
-  const versions = [
-    "0000.0.00",
-    "0000.00.0",
-    "000.000.0",
-    "00.0000.0",
-    "0.0000.00",
-    "0.00.0000",
-    "0.000.000",
-    "0000.0.00",
-    "000.0.000",
-    "v0000.00.00"
-  ];
+import { ChronVer } from "./mod.ts";
 
-  versions.forEach((version: string) => {
-    assertThrows(
-      function () {
-        new chronver.ChronVer(version);
-      },
-      TypeError,
-      `Invalid Version: ${version}`,
-    );
+
+
+//// program
+
+Deno.test("ChronVer constructor validation", async(t) => {
+  await t.step("should create valid versions", () => {
+    const validVersions = [
+      "2024.03.19",
+      "2024.03.19.1",
+      "2024.03.19-feature",
+      "2024.03.19.1-break"
+    ];
+
+    validVersions.forEach(version => {
+      new ChronVer(version);
+    });
+  });
+
+  await t.step("should throw on invalid formats", () => {
+    const invalidVersions = [
+      "1.2.3",
+      "2024.3.19",
+      "2024.03.9",
+      "02024.03.19",
+      "2024.13.19",
+      "2024.03.32",
+      "2024.03.19.",
+      "2024.03.19-",
+      "abc.03.19",
+      "2024.03.19.1.2"
+    ];
+
+    invalidVersions.forEach(version => {
+      assertThrows(() => new ChronVer(version));
+    });
+  });
+
+  await t.step("should validate leap years", () => {
+    new ChronVer("2024.02.29"); // leap year
+    assertThrows(() => new ChronVer("2023.02.29")); // non-leap year
   });
 });
 
-Deno.test("valid versions", function () {
-  const { valid } = chronver;
+Deno.test("ChronVer toString", async(t) => {
+  await t.step("should format version correctly", () => {
+    const testCases = [
+      ["2024.03.19", "2024.03.19"],
+      ["2024.03.19.0", "2024.03.19"],
+      ["2024.03.19.1", "2024.03.19.1"],
+      ["2024.03.19-feature", "2024.03.19-feature"],
+      ["2024.03.19.1-break", "2024.03.19.1-break"]
+    ];
 
-  const versions = [
-    "0000.00.00",
-    "0000.00.00-3",
-    "0000.00.00-foo",
-    "1970.01.01",
-    "1970.01.01.13",
-    "1970.01.01.13-break",
-    "1970.01.01.13-break.1",
-    "1970.01.01.14-super-ui-enhance",
-    "1970.01.01.14-super-ui-enhance.13",
-    "1970.01.01.14-super-ui-please-work",
-    "1970.01.01.14-super-ui-please-work.57",
-    "1970.01.01-a.b.c.10.d.5",
-    "1970.01.01-alpha.10.beta",
-    "1970.01.01-alpha.10.beta+build.unicorn.rainbow",
-    "1970.01.01-foo+bar",
-    "1970.01.01-super-ui-enhance",
-    "1970.01.01-super-ui-enhance.2",
-    "1970.01.01-super-ui-please-work",
-    "1970.01.01-super-ui-please-work.9",
-    "1970.01.01+asdf"
-  ];
-
-  versions.forEach((version: string) => {
-    assertEquals(valid(version), true);
+    testCases.forEach(([input, expected]) => {
+      assertEquals(new ChronVer(input).toString(), expected);
+    });
   });
 });
 
-// TODO
-// : add tests for incrementing year, month, day, and change
+Deno.test("ChronVer compare", async(t) => {
+  await t.step("should compare versions correctly", () => {
+    const comparisons = [
+      ["2024.03.19", "2024.03.19", 0],
+      ["2024.03.19", "2024.03.20", -1],
+      ["2024.03.19", "2024.04.19", -1],
+      ["2024.03.19", "2025.03.19", -1],
+      ["2024.03.19.1", "2024.03.19.2", -1],
+      ["2024.03.19.1", "2024.03.19.1", 0],
+      ["2024.03.19.1-break", "2024.03.19.1", 1],
+      ["2024.03.19-feature.1", "2024.03.19-other.1", 0]
+    ];
+
+    comparisons.forEach(([v1, v2, expected]) => {
+      assertEquals(ChronVer.compare(v1 as string, v2 as string), expected);
+    });
+  });
+});
+
+Deno.test("ChronVer isValid", async(t) => {
+  await t.step("should validate versions correctly", () => {
+    const validVersions = [
+      "2024.03.19",
+      "2024.03.19.1",
+      "2024.03.19-feature",
+      "2024.03.19.1-break",
+      "2024.03.19-feature.1"
+    ];
+
+    validVersions.forEach(version => {
+      assertEquals(ChronVer.isValid(version), true);
+    });
+
+    const invalidVersions = [
+      "1.2.3",
+      "2024.3.19",
+      "2024.13.19",
+      "invalid"
+    ];
+
+    invalidVersions.forEach(version => {
+      assertEquals(ChronVer.isValid(version), false);
+    });
+  });
+});
+
+Deno.test("ChronVer feature branches", async(t) => {
+  await t.step("should handle feature branches correctly", () => {
+    const version = new ChronVer("2024.03.19-feature.1");
+
+    assertEquals(version.feature, "feature");
+    assertEquals(version.changeset, 1);
+    assertEquals(version.isBreaking, false);
+  });
+
+  await t.step("should handle breaking changes correctly", () => {
+    const version = new ChronVer("2024.03.19.1-break");
+
+    assertEquals(version.isBreaking, true);
+    assertEquals(version.feature, undefined);
+  });
+});

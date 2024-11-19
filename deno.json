@@ -1,3 +1,6 @@
 {
-  "importMap": "import_map.json"
+  "exports": "./mod.ts",
+  "license": "MIT",
+  "name": "@chronver/chronver",
+  "version": "1.0.0"
 }

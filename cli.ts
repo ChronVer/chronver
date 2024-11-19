@@ -1,123 +1,230 @@
+#!/usr/bin/env -S deno run
 
-/// native
 
-import { bold as shellBold, dim as shellDim, red as shellRed } from "std/fmt/colors.ts";
-import { parse } from "std/flags/mod.ts";
-import { writeAllSync } from "std/streams/conversion.ts";
 
-/// util
+//// import
 
-import * as chronver from "./mod.ts";
+import { blue, bold, green, red } from "jsr:@std/fmt/colors";
+import { parseArgs } from "jsr:@std/cli/parse-args";
 
-// TODO
-// : githook that prints ChronVer to a file before every commit (read from and overwritten)
-//   : if file doesn't exist, create it
-//   : if file has invalid version, overwrite it
+//// util
 
-// --version 2022.04.03 --increment (no value for default, or year/month/day/change)
-// --version 000.0000.00 (calling version without flags automatically tests for validity)
+import { ChronVer } from "./mod.ts";
 
-if (import.meta.main) {
-  const parsedArgs = parse(Deno.args);
-  const parsedArgsArray = Object.keys(parsedArgs);
-  let packageVersion = "";
+const VERSION = "2024.11.19";
 
-  (async function() {
-    const meta = await Deno.readTextFile("./version.txt");
-    packageVersion = `cli version ${meta.trim()}`;
 
-    if (!parsedArgsArray.length)
-      return help();
 
-    parsedArgsArray.forEach(argument => {
-      const key = argument;
-      const keyValue = parsedArgs[key];
+//// program
 
-      switch(key) {
-        case "H":
-        case "help":
-          return help();
+if (import.meta.main)
+  main();
 
-        case "I":
-        case "inc":
-        case "increment": {
-          if (typeof keyValue === "boolean") {
-            console.error(`${shellBold(shellRed("error"))}: Missing increment level`);
-            return;
-          }
+function main() {
+  const args = parseArgs(Deno.args, {
+    alias: { h: "help", v: "version" },
+    boolean: ["breaking", "help"],
+    string: ["changeset", "feature"]
+  });
 
-          if (!["year", "month", "day", "change"].includes(keyValue)) {
-            console.error(`${shellBold(shellRed("error"))}: Invalid increment level`);
-            return;
-          }
+  const command = args._[0]?.toString();
 
-          if (!parsedArgs._[0]) {
-            console.error(`${shellBold(shellRed("error"))}: Missing increment subject`);
-            return;
-          }
-
-          return writeAllSync(
-            Deno.stdout,
-            new TextEncoder().encode(
-              new chronver.ChronVer(String(parsedArgs._[0]), { increment: keyValue }).version
-            )
-          );
-        }
-
-        case "init":
-        case "initialize": {
-          return writeAllSync(
-            Deno.stdout,
-            new TextEncoder().encode(
-              new chronver.ChronVer("0000.00.00", { initialize: true }).version
-            )
-          );
-        }
-
-        // case "V":
-        // case "validate": {
-        //   console.log(">>> validate");
-        //   console.log(keyValue);
-        //   break;
-        // }
-
-        default:
-          return help();
-      }
-    });
-  })();
-
-  // deno-lint-ignore no-inner-declarations
-  function help() {
-    console.log([
-      // "................................................................................", // 80 characters
-      "       __",
-      `      / /  ${packageVersion}`,
-      " ____/ /  _______  ___ _  _____ ____",
-      "/ __/ _ \\/ __/ _ \\/ _ \\ |/ / -_) __/",
-      "\\__/_//_/_/  \\___/_//_/___/\\__/_/\n",
-      "A TypeScript/Deno implementation of the <chronver.org> specification",
-      "Copyright © netop://ウエハ (Paul Anthony Webb)\n",
-      `${shellDim("Usage:")}`,
-      "  chronver [flag] <version>\n",
-      `${shellDim("Examples:")}`,
-      "  deno run --allow-read cli.ts --initialize",
-      "  deno run --allow-read cli.ts --increment month 2030.03.03\n",
-      `${shellDim("Flags:")}`,
-      "  -H, --help                          Show this help message.\n",
-      "  -I, --inc,  --increment <level>     Increment a version by the specified level.",
-      "                                      Must be followed by a version string.\n",
-      "      --init, --initialize            Creates a ChronVer string, defaulting to",
-      "                                      the present.\n",
-      // "  -V,         --validate  <string>    Validates a supplied version.\n",
-      `${shellDim("Levels:")}`,
-      `  Can be one of: year, month, day, or change. Default level is "change". Only one`,
-      "  level may be specified.\n",
-      "  The version returned will always default to the present. However, supplied",
-      "  versions with a future date will remain in the future.\n",
-      `  For example, passing "1970.04.03 -I month" to ChronVer will return the present`,
-      `  date but passing "3027.04.03 -I month" will return "3027.05.03".`
-      // "................................................................................", // 80 characters
-    ].join("\n"));
+  if (args.help || command === "help") {
+    printHelp();
+    return;
   }
+
+  if (args.version || command === "version") {
+    console.log(`ChronVer CLI version ${VERSION}`);
+    return;
+  }
+
+  switch (command) {
+    case "validate": {
+      const version = args._[1]?.toString();
+
+      if (!version) {
+        console.error(red("Error: Version argument required"));
+        Deno.exit(1);
+      }
+
+      const isValid = ChronVer.isValid(version);
+      console.log(isValid ? green("Valid") : red("Invalid"));
+
+      Deno.exit(isValid ? 0 : 1);
+      break;
+    }
+
+    case "compare": {
+      const v1 = args._[1]?.toString();
+      const v2 = args._[2]?.toString();
+
+      if (!v1 || !v2) {
+        console.error(red("Error: Two version arguments required"));
+        Deno.exit(1);
+      }
+
+      try {
+        const result = ChronVer.compare(v1, v2);
+
+        console.log(
+          result === 0 ?
+            "Versions are equal" :
+              result < 0 ?
+                `${v1} is older than ${v2}` :
+                `${v1} is newer than ${v2}`
+        );
+      } catch(error) {
+        console.error(red(`Error: ${(error as Error).message}`));
+        Deno.exit(1);
+      }
+
+      break;
+    }
+
+    case "today": {
+      const version = generateToday(
+        args.changeset !== undefined ? parseInt(args.changeset) : undefined,
+        args.feature,
+        args.breaking
+      );
+
+      console.log(version);
+      break;
+    }
+
+    case "parse": {
+      const version = args._[1]?.toString();
+
+      if (!version) {
+        console.error(red("Error: Version argument required"));
+        Deno.exit(1);
+      }
+
+      parseAndDisplay(version);
+      break;
+    }
+
+    case "is-newer": {
+      const v1 = args._[1]?.toString();
+      const v2 = args._[2]?.toString();
+
+      if (!v1 || !v2) {
+        console.error(red("Error: Two version arguments required"));
+        Deno.exit(1);
+      }
+
+      try {
+        const result = ChronVer.compare(v1, v2) > 0;
+        console.log(result ? green("Yes") : red("No"));
+
+        Deno.exit(result ? 0 : 1);
+      } catch(error) {
+        console.error(red(`Error: ${(error as Error).message}`));
+        Deno.exit(1);
+      }
+
+      break;
+    }
+
+    case "is-breaking": {
+      const version = args._[1]?.toString();
+
+      if (!version) {
+        console.error(red("Error: Version argument required"));
+        Deno.exit(1);
+      }
+
+      try {
+        const v = new ChronVer(version);
+        console.log(v.isBreaking ? green("Yes") : red("No"));
+
+        Deno.exit(v.isBreaking ? 0 : 1);
+      } catch(error) {
+        console.error(red(`Error: ${(error as Error).message}`));
+        Deno.exit(1);
+      }
+
+      break;
+    }
+
+    default: {
+      console.error(red("Error: Unknown command"));
+      printHelp();
+      Deno.exit(1);
+    }
+  }
+}
+
+
+
+//// helper
+
+function generateToday(changeset?: number, feature?: string, breaking = false): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  let version = `${year}.${month}.${day}`;
+
+  if (changeset !== undefined)
+    version += `.${changeset}`;
+
+  if (feature)
+    version += `-${feature}`;
+
+  if (breaking)
+    version += "-break";
+
+  return version;
+}
+
+function parseAndDisplay(version: string) {
+  try {
+    const v = new ChronVer(version);
+
+    console.log(`
+${bold("Version Details:")}
+Year: ${blue(v.year.toString())}
+Month: ${blue(v.month.toString().padStart(2, "0"))}
+Day: ${blue(v.day.toString().padStart(2, "0"))}
+Changeset: ${blue(v.changeset.toString())}
+Feature: ${blue(v.feature || "none")}
+Breaking: ${blue(v.isBreaking.toString())}
+    `);
+  } catch(error) {
+    console.error(red(`Error: ${(error as Error).message}`));
+    Deno.exit(1);
+  }
+}
+
+function printHelp() {
+  console.log(`
+${bold("ChronVer CLI")} - Chronological versioning tools
+
+${bold("USAGE:")}
+  chronver <command> [options]
+
+${bold("COMMANDS:")}
+  compare <version1> <version2>   Compare two versions
+  help                            Show this help message
+  is-breaking <version>           Check if version is a breaking change
+  is-newer <v1> <v2>              Check if v1 is newer than v2
+  parse <version>                 Parse and display version details
+  today [--changeset=<n>]         Generate today's version
+  validate <version>              Validate a version string
+  version                         Show CLI version
+
+${bold("OPTIONS:")}
+  --breaking                      Mark version as breaking change
+  --changeset=<n>                 Specify changeset number for today's version
+  --feature=<name>                Add feature name to version
+
+${bold("EXAMPLES:")}
+  chronver validate 2024.04.03
+  chronver compare 2024.04.03.1 2024.04.03.2
+  chronver today --changeset=1 --feature=test
+  chronver parse 2024.04.03.1-break
+  chronver is-newer 2024.04.03.2 2024.04.03.1
+  `);
 }

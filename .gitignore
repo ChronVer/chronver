@@ -1,3 +1,6 @@
 # OS garbage
 .DS_Store
 Thumbs.db
+
+# &c
+*.lock
