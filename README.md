@@ -83,6 +83,8 @@ console.log(breaking.isBreaking); // true
 console.log(breaking.toString()); // "2024.04.03.1-break"
 ```
 
+
+
 ## CLI Usage
 
 ```sh
@@ -100,6 +102,12 @@ The ChronVer CLI provides several commands for working with chronological versio
 chronver today
 chronver today --changeset=1 --feature=test
 chronver today --breaking
+
+# increment `version` in package.json
+chronver -i package
+
+# increment `version` in JSON file
+chronver --increment file.json
 
 # validate a version
 chronver validate 2024.04.03.1
@@ -119,8 +127,6 @@ chronver is-breaking 2024.04.03.1-break
 chronver help
 ```
 
-
-
 ### CLI Commands
 
 - `compare <v1> <v2>` - Compare two versions
@@ -137,10 +143,6 @@ chronver help
 - `--breaking` - Mark as breaking change
 - `--changeset=<n>` - Specify changeset number
 - `--feature=<name>` - Add feature name
-
-[Previous README content remains the same...]
-
-===
 
 
 
@@ -194,6 +196,14 @@ Examples:
 
 
 ## Development
+
+### Create executable
+
+```sh
+deno compile --allow-read --allow-write --output bin/chronver cli.ts
+```
+
+Now you can run `./bin/chronver` in your scripts.
 
 ### Running Tests
 

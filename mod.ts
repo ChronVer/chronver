@@ -70,7 +70,20 @@ export class ChronVer {
   readonly year: number;
 
   /** Creates a new version */
-  constructor(version: string) {
+  constructor(version?: string) {
+    if (!version) {
+      const now = new Date();
+
+      this.changeset = 0;
+      this.day = now.getDate();
+      this.isBreaking = false;
+      this.month = now.getMonth() + 1;
+      this.year = now.getFullYear();
+      this.validate();
+
+      return this;
+    }
+
     const regex = /^(\d{4})\.(?:0[1-9]|1[0-2])\.(?:0[1-9]|[12]\d|3[01])(?:\.(\d+))?(?:-(break|[a-zA-Z0-9-]+)(?:\.(\d+))?)?$/;
     const match = version.match(regex);
 
@@ -147,30 +160,6 @@ export class ChronVer {
   /// static methods
 
   /**
-   * Returns true if the string can be parsed as ChronVer.
-   *
-   * @example Usage
-   * ```ts
-   * import { assert, assertFalse } from "@std/assert";
-   * import { isValid } from "@chronver/chronver";
-   *
-   * assert(canParse("2024.04.03"));
-   * assertFalse(canParse("invalid"));
-   * ```
-   *
-   * @param version The version string to check
-   * @returns `true` if the string can be parsed as ChronVer, `false` otherwise
-   */
-  static isValid(version: string): boolean {
-    try {
-      new ChronVer(version);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
    * Compare two ChronVers.
    *
    * Returns `0` if `version1` equals `version2`, or `1` if `version1` is greater, or
@@ -195,5 +184,100 @@ export class ChronVer {
    */
   static compare(v1: string, v2: string): number {
     return new ChronVer(v1).compare(new ChronVer(v2));
+  }
+
+  /** Increments version */
+  static async increment(value: string | undefined): Promise<string> {
+    const today = new Date();
+
+    const currentDateStr = [
+      today.getFullYear(),
+      (today.getMonth() + 1).toString().padStart(2, "0"),
+      today.getDate().toString().padStart(2, "0")
+    ].join(".");
+
+    if (!value)
+      return new ChronVer().toString();
+
+    if (value.endsWith(".json") || value === "package") {
+      const filename = value === "package" ? "package.json" : value;
+
+      try {
+        const content = await Deno.readTextFile(filename);
+        const json = JSON.parse(content);
+        const currentVersion = this.parseVersion(json.version);
+
+        if (currentVersion && currentVersion.date === currentDateStr) {
+          json.version = [
+            currentVersion.date,
+            currentVersion.changeset + 1
+          ].join(".");
+        } else {
+          json.version = new ChronVer().toString();
+        }
+
+        await Deno.writeTextFile(filename, JSON.stringify(json, null, 2) + "\n");
+        return json.version;
+      } catch(error) {
+        throw new Error(`Failed to update ${filename}: ${(error as Error).message}`);
+      }
+    }
+
+    return new ChronVer().toString();
+  }
+
+  /**
+   * Returns true if the string can be parsed as ChronVer.
+   *
+   * @example Usage
+   * ```ts
+   * import { assert, assertFalse } from "@std/assert";
+   * import { isValid } from "@chronver/chronver";
+   *
+   * assert(isValid("2024.04.03"));
+   * assertFalse(isValid("invalid"));
+   * ```
+   *
+   * @param version The version string to check
+   * @returns `true` if the string can be parsed as ChronVer, `false` otherwise
+   */
+  static isValid(version: string): boolean {
+    try {
+      new ChronVer(version);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Parses valid ChronVer.
+   *
+   * @example Usage
+   * ```ts
+   * import { parseVersion } from "@chronver/chronver";
+   *
+   * console.log(parseVersion("2024.04.03.4"));
+   * ```
+   *
+   * @param version The version string to parse
+   * @returns object with `changeset`, `date`, and `version`
+   */
+  static parseVersion(version: string): { changeset: number; date: string; version: string; } | null {
+    const changesetMatch = version.match(/^(\d{4}\.\d{2}\.\d{2})\.(\d+)$/);
+
+    if (changesetMatch) {
+      return {
+        changeset: parseInt(changesetMatch[2], 10),
+        date: changesetMatch[1],
+        version
+      };
+    } else {
+      return {
+        changeset: 0,
+        date: version,
+        version
+      };
+    }
   }
 }

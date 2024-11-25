@@ -20,11 +20,19 @@ const VERSION = "2024.11.19";
 if (import.meta.main)
   main();
 
-function main() {
+async function main() {
   const args = parseArgs(Deno.args, {
-    alias: { h: "help", v: "version" },
+    alias: {
+      h: "help",
+      i: "increment",
+      v: "version"
+    },
     boolean: ["breaking", "help"],
-    string: ["changeset", "feature"]
+    string: [
+      "changeset",
+      "feature",
+      "increment"
+    ]
   });
 
   const command = args._[0]?.toString();
@@ -39,22 +47,12 @@ function main() {
     return;
   }
 
-  switch (command) {
-    case "validate": {
-      const version = args._[1]?.toString();
+  if (args.increment || command === "increment") {
+    await ChronVer.increment(args.increment);
+    return;
+  }
 
-      if (!version) {
-        console.error(red("Error: Version argument required"));
-        Deno.exit(1);
-      }
-
-      const isValid = ChronVer.isValid(version);
-      console.log(isValid ? green("Valid") : red("Invalid"));
-
-      Deno.exit(isValid ? 0 : 1);
-      break;
-    }
-
+  switch(command) {
     case "compare": {
       const v1 = args._[1]?.toString();
       const v2 = args._[2]?.toString();
@@ -82,18 +80,7 @@ function main() {
       break;
     }
 
-    case "today": {
-      const version = generateToday(
-        args.changeset !== undefined ? parseInt(args.changeset) : undefined,
-        args.feature,
-        args.breaking
-      );
-
-      console.log(version);
-      break;
-    }
-
-    case "parse": {
+    case "is-breaking": {
       const version = args._[1]?.toString();
 
       if (!version) {
@@ -101,7 +88,16 @@ function main() {
         Deno.exit(1);
       }
 
-      parseAndDisplay(version);
+      try {
+        const v = new ChronVer(version);
+        console.log(v.isBreaking ? green("Yes") : red("No"));
+
+        Deno.exit(v.isBreaking ? 0 : 1);
+      } catch(error) {
+        console.error(red(`Error: ${(error as Error).message}`));
+        Deno.exit(1);
+      }
+
       break;
     }
 
@@ -127,7 +123,7 @@ function main() {
       break;
     }
 
-    case "is-breaking": {
+    case "parse": {
       const version = args._[1]?.toString();
 
       if (!version) {
@@ -135,16 +131,33 @@ function main() {
         Deno.exit(1);
       }
 
-      try {
-        const v = new ChronVer(version);
-        console.log(v.isBreaking ? green("Yes") : red("No"));
+      parseAndDisplay(version);
+      break;
+    }
 
-        Deno.exit(v.isBreaking ? 0 : 1);
-      } catch(error) {
-        console.error(red(`Error: ${(error as Error).message}`));
+    case "today": {
+      const version = generateToday(
+        args.changeset !== undefined ? parseInt(args.changeset) : undefined,
+        args.feature,
+        args.breaking
+      );
+
+      console.log(version);
+      break;
+    }
+
+    case "validate": {
+      const version = args._[1]?.toString();
+
+      if (!version) {
+        console.error(red("Error: Version argument required"));
         Deno.exit(1);
       }
 
+      const isValid = ChronVer.isValid(version);
+      console.log(isValid ? green("Valid") : red("Invalid"));
+
+      Deno.exit(isValid ? 0 : 1);
       break;
     }
 
@@ -219,6 +232,8 @@ ${bold("OPTIONS:")}
   --breaking                      Mark version as breaking change
   --changeset=<n>                 Specify changeset number for today's version
   --feature=<name>                Add feature name to version
+  --increment                     Increment version for the specified target
+                                  (can be a JSON file path or any value)
 
 ${bold("EXAMPLES:")}
   chronver validate 2024.04.03
@@ -226,5 +241,7 @@ ${bold("EXAMPLES:")}
   chronver today --changeset=1 --feature=test
   chronver parse 2024.04.03.1-break
   chronver is-newer 2024.04.03.2 2024.04.03.1
+  chronver -i package
+  chronver --increment file.json
   `);
 }
