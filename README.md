@@ -143,6 +143,7 @@ chronver help
 - `--breaking` - Mark as breaking change
 - `--changeset=<n>` - Specify changeset number
 - `--feature=<name>` - Add feature name
+- `--increment` - Increment version for the specified target (can be a JSON file path or any value)
 
 
 
@@ -191,7 +192,9 @@ Examples:
 #### Static Methods
 
 - `compare(v1: string, v2: string): number`: compares two version strings
+- `increment(value: string | undefined): Promise<string>`: increments version
 - `isValid(version: string): boolean`: checks if version string is valid
+- `parseVersion(version: string): { changeset: number; date: string; version: string; } | null`: parses version
 
 
 
@@ -200,10 +203,10 @@ Examples:
 ### Create executable
 
 ```sh
-deno compile --allow-read --allow-write --output bin/chronver cli.ts
+deno run --allow-env --allow-read --allow-run --allow-write bundle.ts
 ```
 
-Now you can run `./bin/chronver` in your scripts.
+Now you can use `./bin/chronver.js` in your scripts.
 
 ### Running Tests
 
