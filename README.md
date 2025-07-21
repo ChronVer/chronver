@@ -1,230 +1,331 @@
-# ChronVer
 
-This repo contains the TypeScript implementation of the [Chronologic Versioning](https://chronver.org) specification, as well as a CLI. ChronVer is a temporal-based versioning system that makes version numbers more intuitive and easier to track. Welcome to the future.
+![](banner.png "ChronVer banner")
+
+**ChronVer (Chronological Versioning) is calendar-based versioning system.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
 
 
 
-## Features
+## Why ChronVer?
 
-- Full ChronVer specification implementation
-- Command-line interface (CLI)
-- Version validation and comparison
-- Feature branch and breaking change support
-- Deno and Node.js compatibility
+```
+2025.07.21 ← You know exactly when this was released
+v3.2.1     ← You have no idea when this happened
+```
+
+Semantic versioning is great for large systems like libraries and computers. Most software would benefit from **time-based versioning** that's immediately understandable to everyone on a team, not just the technical-minded.
+
+
+
+## Format
+
+```
+YYYY.MM.DD[.CHANGESET][-FEATURE|-break]
+```
+
+### Examples
+
+| Version                | Description                   |
+|------------------------|-------------------------------|
+| `2025.07.21`           | Released July 21st, 2025      |
+| `2025.07.21.1`         | First hotfix that day         |
+| `2025.07.21.3`         | Third change that day         |
+| `2025.07.21-feature`   | Feature branch for that date  |
+| `2025.07.21.1-feature` | Feature branch with changeset |
+| `2025.07.21.1-break`   | Breaking change               |
 
 
 
 ## Installation
 
-```sh
-# deno
-deno add jsr:@chronver/chronver
+### Deno
 
-# node
-npx jsr add @chronver/chronver
+```sh
+# import in your code
+import { ChronVer } from "jsr:@chronver/chronver";
+
+# install CLI globally
+deno install --allow-read --allow-write -n chronver https://raw.githubusercontent.com/chronver/chronver/cli.ts
 ```
 
 
 
 ## Usage
 
-### Basic Usage
+### Basic API
 
 ```ts
-// deno
 import { ChronVer } from "jsr:@chronver/chronver";
 
-// node
-import { ChronVer } from "@chronver/chronver";
+// create new version with today's date
+const version = new ChronVer();
+console.log(version.toString()); // "2025.07.21"
 
-// create new version
-const version = new ChronVer("2024.04.03.1");
+// parse existing version
+const parsed = new ChronVer("2024.04.03.1");
+console.log(parsed.year);      // 2024
+console.log(parsed.month);     // 4
+console.log(parsed.day);       // 3
+console.log(parsed.changeset); // 1
 
-// convert to string
-console.log(version.toString()); // "2024.04.03.1"
+// compare versions
+const v1 = new ChronVer("2024.04.03");
+const v2 = new ChronVer("2024.04.04");
+console.log(v1.isOlderThan(v2)); // true
+console.log(v2.isNewerThan(v1)); // true
 
-// access version components
-console.log(version.year);      // 2024
-console.log(version.month);     // 4
-console.log(version.day);       // 3
-console.log(version.changeset); // 1
+// increment version
+const incremented = version.increment();
+console.log(incremented.toString()); // "2024.07.19.1" (if same day)
 ```
 
-### Validation
+### Static Methods
 
 ```ts
-console.log(ChronVer.isValid("2024.04.03")); // true
-console.log(ChronVer.isValid("invalid"));    // false
-console.log(ChronVer.isValid("2024.13.19")); // false (invalid month)
+// validation
+ChronVer.isValid("2024.04.03"); // true
+ChronVer.isValid("invalid");    // false
+
+// comparison
+ChronVer.compare("2024.04.03", "2024.04.04"); // -1
+
+// parsing
+const parsed = ChronVer.parseVersion("2024.04.03.1-feature");
+// {
+//   changeset: 1,
+//   date: "2024.04.03",
+//   feature: "feature",
+//   isBreaking: false,
+//   version: "2024.04.03.1-feature"
+// }
+
+// sorting
+const versions = ["2024.04.05", "2024.04.03", "2024.04.04"];
+ChronVer.sort(versions); // ["2024.04.03", "2024.04.04", "2024.04.05"]
+
+// create from Date
+const date = new Date(2024, 3, 3); // April 3, 2024
+const version = ChronVer.fromDate(date, 5); // "2024.04.03.5"
 ```
 
-### Comparison
+### File Operations
 
 ```ts
-const v1 = "2024.04.03.1";
-const v2 = "2024.04.03.2";
+// update package.json version
+const newVersion = await ChronVer.incrementInFile("package.json");
+console.log(newVersion); // "2025.07.21.1"
 
-console.log(ChronVer.compare(v1, v2)); // -1 (v1 is older than v2)
-console.log(ChronVer.compare(v2, v1)); // 1  (v2 is newer than v1)
-console.log(ChronVer.compare(v1, v1)); // 0  (versions are equal)
-```
-
-### Feature Branches and Breaking Changes
-
-```ts
-// feature branch
-const feature = new ChronVer("2024.04.03-feature");
-console.log(feature.feature);    // "feature"
-console.log(feature.toString()); // "2024.04.03-feature"
-
-// breaking change
-const breaking = new ChronVer("2024.04.03.1-break");
-console.log(breaking.isBreaking); // true
-console.log(breaking.toString()); // "2024.04.03.1-break"
+// works with any JSON file
+await ChronVer.incrementInFile("deno.json");
 ```
 
 
 
 ## CLI Usage
 
-```sh
-# install CLI globally
-deno install --allow-read --allow-env --global --name chronver cli.ts
+```bash
+# create new version
+chronver create                            # 2024.07.19
 
-# uninstall CLI globally
-deno uninstall chronver --global
-```
-
-The ChronVer CLI provides several commands for working with chronological versions:
-
-```sh
-# get today's version
-chronver today
-chronver today --changeset=1 --feature=test
-chronver today --breaking
-
-# increment `version` in package.json
-chronver -i package
-
-# increment `version` in JSON file
-chronver --increment file.json
-
-# validate a version
-chronver validate 2024.04.03.1
-chronver validate 2024.04.03-feature
+# validate versions
+chronver validate "2024.04.03.1"           # ✅ Valid: 2024.04.03.1
 
 # compare versions
-chronver compare 2024.04.03.1 2024.04.03.2
-chronver is-newer 2024.04.03.2 2024.04.03.1
+chronver compare "2024.04.03" "2024.04.04" # 2024.04.03 < 2024.04.04 (-1)
+
+# increment package.json
+chronver increment                         # 📦 Updated to: 2025.07.21.1
+chronver increment deno.json               # 📦 Updated to: 2025.07.21.1
 
 # parse version details
-chronver parse 2024.04.03.1-break
+chronver parse "2024.04.03.1-feature"
+# 📋 Version: 2024.04.03.1-feature
+# 📅 Date: 2024.04.03
+# 🔢 Changeset: 1
+# 💥 Breaking: no
+# 🚀 Feature: feature
+# 📆 Day of week: Wednesday
+# ⏪ Released 107 days ago
 
-# check for breaking changes
-chronver is-breaking 2024.04.03.1-break
+# sort versions
+chronver sort "2024.04.03" "2024.04.01" "2024.04.05"
+# 📊 Sorted (ascending):
+# 🔼 1. 2024.04.01
+# 🔼 2. 2024.04.03
+# 🔼 3. 2024.04.05
 
-# show help
-chronver help
+chronver --sort-desc "2024.04.03" "2024.04.01" "2024.04.05"
+# 📊 Sorted (descending):
+# 🔽 1. 2024.04.05
+# 🔽 2. 2024.04.03
+# 🔽 3. 2024.04.01
+
+# create from specific date
+chronver format "2024-04-03" 5             # 2024.04.03.5
+
+# help
+chronver --help
 ```
 
-### CLI Commands
-
-- `compare <v1> <v2>` - Compare two versions
-- `help` - Show help message
-- `is-breaking <version>` - Check if version is a breaking change
-- `is-newer <v1> <v2>` - Check if v1 is newer than v2
-- `parse <version>` - Display detailed version information
-- `today` - Generate today's version
-- `validate <version>` - Check if a version string is valid
-- `version` - Show CLI version
-
-### CLI Options
-
-- `--breaking` - Mark as breaking change
-- `--changeset=<n>` - Specify changeset number
-- `--feature=<name>` - Add feature name
-- `--increment` - Increment version for the specified target (can be a JSON file path or any value)
 
 
+## When to Use ChronVer
 
-## Version Format
+### ✅ Perfect For
 
-A valid ChronVer version number follows this format:
-- `YYYY.MM.DD[.CHANGESET][-LABEL]`
+- **SaaS platforms** with regular feature rollouts
+- **Mobile apps** with app store schedules
+- **Enterprise software** with quarterly releases
+- **Security tools** where timing matters
+- **Marketing-driven releases** tied to campaigns
+- **Compliance software** with regulatory deadlines
 
-Where:
-- `YYYY` is the four-digit year
-- `MM` is the two-digit month (01-12)
-- `DD` is the two-digit day (01-31)
-- `CHANGESET` is an optional non-negative integer
-- `LABEL` can be either "break" for breaking changes or a feature name
+### ❌ Less Ideal For
 
-Examples:
-- `2024.04.03`: basic version
-- `2024.04.03.1`: version with changeset
-- `2024.04.03-feature`: feature branch
-- `2024.04.03.1-break`: breaking change
+- **Libraries** consumed by other developers
+- **APIs** where breaking changes need clear signaling
+- **Projects** with irregular, feature-driven releases
+- **Tools** where semantic compatibility matters more than timing
 
 
 
-## API Reference
+## Comparison with SemVer
 
-### `ChronVer` Class
-
-#### Constructor
-
-- `new ChronVer(version: string)`: creates a new ChronVer instance
-
-#### Properties
-
-- `changeset: number`: changeset number (0 if not specified)
-- `day: number`: day component (1-31)
-- `feature?: string`: feature name (if specified)
-- `isBreaking: boolean`: whether this is a breaking change
-- `month: number`: month component (1-12)
-- `year: number`: year component
-
-#### Methods
-
-- `compare(other: ChronVer): number`: compares two versions (-1, 0, 1)
-- `toString(): string`: converts version to its string representation
-
-#### Static Methods
-
-- `compare(v1: string, v2: string): number`: compares two version strings
-- `increment(value: string | undefined): Promise<string>`: increments version
-- `isValid(version: string): boolean`: checks if version string is valid
-- `parseVersion(version: string): { changeset: number; date: string; version: string; } | null`: parses version
+| Aspect            | ChronVer                        | SemVer                    |
+|-------------------|---------------------------------|---------------------------|
+| **Clarity**       | Immediately shows when released | Requires lookup           |
+| **Planning**      | Aligns with calendar schedules  | Feature-driven            |
+| **Communication** | "The April release"             | "Version 3.2.1"           |
+| **Sorting**       | Chronological by default        | Arbitrary without context |
+| **Compatibility** | Time-based breaking changes     | API contract based        |
+| **Best for**      | Time-sensitive releases         | Library compatibility     |
 
 
 
-## Development
+## Advanced Features
 
-### Create executable
+### Feature Branches
 
-```sh
-deno run --allow-env --allow-read --allow-run --allow-write bundle.ts
+```ts
+const feature = new ChronVer("2024.04.03-new-ui");
+console.log(feature.feature);    // "new-ui"
+console.log(feature.toString()); // "2024.04.03-new-ui"
 ```
 
-Now you can use `./bin/chronver.js` in your scripts.
+### Breaking Changes
 
-### Running Tests
+```ts
+const breaking = new ChronVer("2024.04.03.1-break");
+console.log(breaking.isBreaking); // true
+```
+
+### Date Validation
+
+ChronVer validates actual calendar dates:
+
+```ts
+ChronVer.isValid("2024.02.29"); // true (2024 was a leap year)
+ChronVer.isValid("2023.02.29"); // false (2023 was not a leap year)
+ChronVer.isValid("2024.04.31"); // false (April has 30 days)
+```
+
+
+
+## Real-World Examples
+
+### `package.json` integration
+
+```json
+{
+  "name": "my-app",
+  "scripts": {
+    "version": "chronver increment"
+  },
+  "version": "2025.07.21.3"
+}
+```
+
+### CI/CD Pipeline
+
+```yaml
+# GitHub Actions example
+- name: Update version
+  run: |
+    chronver increment
+    git add package.json
+    git commit -m "chore: bump version to $(cat package.json | jq -r .version)"
+```
+
+### Release Notes
+
+```md
+## Release 2025.07.21 - Summer Feature Drop
+
+### New Features
+
+- Dark mode support
+- Mobile-responsive dashboard
+- Advanced search filters
+
+### Bug Fixes
+
+- Fixed login timeout issue
+- Improved performance on large datasets
+
+### Breaking Changes
+
+None in this release.
+```
+
+
+
+### Development
 
 ```sh
-# lint all TypeScript files
-deno lint
+# clone project
+git clone https://github.com/chronver/chronver.git && cd $\_
 
-# type-check file
-deno check cli.ts
-deno check mod.ts
-deno check test.ts
+# lint
+deno check && deno lint
 
-# run the tests in `test.ts`
-deno test
+# run tests
+deno test --allow-read --allow-write --fail-fast
+
+# run CLI locally
+deno run --allow-read --allow-write cli.ts --help
 ```
 
 
 
 ## License
 
-MIT
+[Creative Commons ― CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+
+
+
+## FAQ
+
+### Why not just use dates?
+
+ChronVer **is** dates, but with a structured format that supports multiple releases per day, feature branches, and breaking change indicators.
+
+### What about semantic compatibility?
+
+ChronVer can indicate breaking changes with the `-break` suffix. For situations where semantic versioning is **crucial**, stick with SemVer.
+
+### How do I migrate from SemVer?
+
+1. Choose your first ChronVer date (usually next release)
+2. Update your build tools to use `chronver increment`
+3. Update documentation to explain the new format
+4. Consider keeping a mapping in your `CHANGELOG`
+
+### Can I use both ChronVer and SemVer?
+
+Absolutely! Here's how your project could use ChronVer for releases and SemVer for API versions:
+
+```json
+{
+  "apiVersion": "v2.1.0",
+  "version": "2024.07.19.1"
+}
+```
