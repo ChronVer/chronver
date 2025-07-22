@@ -1,7 +1,7 @@
 
 ![](banner.png "ChronVer banner")
 
-**ChronVer (Chronological Versioning) is calendar-based versioning.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
+**[ChronVer](https://chronver.org) (Chronological Versioning) is calendar-based versioning.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
 
 
 
