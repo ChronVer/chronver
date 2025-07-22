@@ -1,7 +1,7 @@
 
 ![](banner.png "ChronVer banner")
 
-**ChronVer (Chronological Versioning) is calendar-based versioning system.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
+**ChronVer (Chronological Versioning) is calendar-based versioning.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
 
 
 
@@ -44,7 +44,7 @@ YYYY.MM.DD[.CHANGESET][-FEATURE|-break]
 import { ChronVer } from "jsr:@chronver/chronver";
 
 # install CLI globally
-deno install --allow-read --allow-write -n chronver https://raw.githubusercontent.com/chronver/chronver/cli.ts
+deno install --allow-read --allow-write -n chronver https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/cli.ts
 ```
 
 
