@@ -1,7 +1,7 @@
 
 ![](banner.png "ChronVer banner")
 
-**[ChronVer](https://chronver.org) (Chronological Versioning) is calendar-based versioning.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
+**[ChronVer](https://chronver.org) (Chronological Versioning) is calendar‑based versioning.** In the age of rapid software releases, knowing _when_ something released is more important than arbitrary numbers from an outdated versioning system that most people never adhere to anyway. Finally, versioning for the rest of us.
 
 
 
@@ -12,7 +12,7 @@
 v3.2.1     ← You have no idea when this happened
 ```
 
-Semantic versioning is great for large systems like libraries and computers. Most software would benefit from **time-based versioning** that's immediately understandable to everyone on a team, not just the technical-minded.
+Semantic versioning is great for large systems like libraries and computers. Most software would benefit from **time‑based versioning** that's immediately understandable to everyone on a team, not just the technical‑minded.
 
 
 
@@ -40,11 +40,62 @@ YYYY.MM.DD[.CHANGESET][-FEATURE|-break]
 ### Deno
 
 ```sh
+# install
+deno add jsr:@chronver/chronver
+
 # import in your code
 import { ChronVer } from "jsr:@chronver/chronver";
 
 # install CLI globally
-deno install --allow-read --allow-write -n chronver https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/cli.ts
+deno install --allow-read --allow-write --global --name chronver https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/cli.ts --config deno.json
+```
+
+### npm/bun
+
+```sh
+# install via npm
+npx jsr add @chronver/chronver
+
+# install via bun
+bunx jsr add @chronver/chronver
+
+# import in your code
+import { ChronVer } from "@chronver/chronver";
+```
+
+ChronVer is especially powerful with [husky](https://typicode.github.io/husky/). Here's how I use it in my Node projects (using [bun](https://bun.sh)):
+
+```js
+// package.json
+  "devDependencies": {
+    "del-cli": "^6.0.0",
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "build": "bun run clean && vite build",
+    "clean": "del './build'",
+    "increment": "chronver increment",
+    "pre-commit": "bun run build && bun run increment && git add -A :/",
+    "prepare": "husky"
+  }
+```
+
+Now every time you push a commit, the `version` in `package.json` gets updated. Please note that you'll need to install the `chronver` CLI globally using the Deno method above or the path method below.
+
+### macOS/Linux
+
+You can find releases of the CLI on the [releases page](https://github.com/ChronVer/chronver/releases) of this repo.
+
+```sh
+# create personal bin directory if it doesn't exist
+mkdir -p ~/.local/bin
+
+# add to PATH in your shell profile (~/.bashrc, ~/.zshrc, etc.)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# move binary there
+mv chronver ~/.local/bin/
 ```
 
 
@@ -176,14 +227,14 @@ chronver --help
 - **Mobile apps** with app store schedules
 - **Enterprise software** with quarterly releases
 - **Security tools** where timing matters
-- **Marketing-driven releases** tied to campaigns
+- **Marketing‑driven releases** tied to campaigns
 - **Compliance software** with regulatory deadlines
 
 ### ❌ Less Ideal For
 
 - **Libraries** consumed by other developers
 - **APIs** where breaking changes need clear signaling
-- **Projects** with irregular, feature-driven releases
+- **Projects** with irregular, feature‑driven releases
 - **Tools** where semantic compatibility matters more than timing
 
 
@@ -193,11 +244,11 @@ chronver --help
 | Aspect            | ChronVer                        | SemVer                    |
 |-------------------|---------------------------------|---------------------------|
 | **Clarity**       | Immediately shows when released | Requires lookup           |
-| **Planning**      | Aligns with calendar schedules  | Feature-driven            |
+| **Planning**      | Aligns with calendar schedules  | Feature‑driven            |
 | **Communication** | "The April release"             | "Version 3.2.1"           |
 | **Sorting**       | Chronological by default        | Arbitrary without context |
-| **Compatibility** | Time-based breaking changes     | API contract based        |
-| **Best for**      | Time-sensitive releases         | Library compatibility     |
+| **Compatibility** | Time‑based breaking changes     | API contract based        |
+| **Best for**      | Time‑sensitive releases         | Library compatibility     |
 
 
 
@@ -263,7 +314,7 @@ ChronVer.isValid("2024.04.31"); // false (April has 30 days)
 ### New Features
 
 - Dark mode support
-- Mobile-responsive dashboard
+- Mobile‑responsive dashboard
 - Advanced search filters
 
 ### Bug Fixes
@@ -282,7 +333,7 @@ None in this release.
 
 ```sh
 # clone project
-git clone https://github.com/chronver/chronver.git && cd $\_
+git clone https://github.com/chronver/chronver.git && cd $_
 
 # lint
 deno check && deno lint
@@ -292,6 +343,19 @@ deno test --allow-read --allow-write --fail-fast
 
 # run CLI locally
 deno run --allow-read --allow-write cli.ts --help
+```
+
+If you have [Just](https://just.systems/man/en/) installed:
+
+```sh
+just lint
+# deno check && deno lint
+
+just test
+# deno test --allow-read --allow-write --fail-fast
+
+just build
+# compile CLI to an executable
 ```
 
 

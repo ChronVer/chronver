@@ -2,5 +2,8 @@
 .DS_Store
 Thumbs.db
 
+# directories
+build/
+
 # &c
 *.lock

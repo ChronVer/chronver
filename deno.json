@@ -5,10 +5,11 @@
     "@std/cli": "jsr:@std/cli@^1.0.20"
   },
   "license": "MIT",
+  "lock": false,
   "name": "@chronver/chronver",
   "permissions": {
     "read": true,
     "write": true
   },
-  "version": "2.0.0"
+  "version": "2.1.0"
 }

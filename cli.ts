@@ -10,7 +10,7 @@ import { parseArgs } from "@std/cli";
 
 import { ChronVer } from "./mod.ts";
 
-const VERSION = "2024.07.19.1";
+const VERSION = await getVersion();
 
 interface CliArgs {
   _: string[];
@@ -249,6 +249,18 @@ function formatFromDate(dateStr: string, changeset?: string): void {
   }
 }
 
+async function getVersion() {
+  let version = "";
+
+  try {
+    version = await Deno.readTextFile("./version.txt");
+  } catch {
+    /*** ignore ***/
+  }
+
+  return version.trim();
+}
+
 async function incrementVersion(filename?: string): Promise<void> {
   try {
     const file = filename || "package.json";
@@ -315,6 +327,11 @@ function parseVersion(version: string): void {
 
 function showHelp(): void {
   console.log(`
+      __
+ ____/ /  _______  _____  __________
+/ __/ _ \\/ __/ _ \\/ _ | |/ / -_/ __/
+\\__/_//_/_/  \\___/_//_|___/\\__/_/
+
 ChronVer CLI ${VERSION}
 Versioning for the rest of us
 
@@ -336,15 +353,15 @@ OPTIONS:
   --sort-desc                Sort versions in descending order
 
 EXAMPLES:
-  chronver compare "2024.04.03" "2024.04.04"
-  chronver create
-  chronver format "2024-04-03" 5
-  chronver increment
-  chronver increment deno.json
-  chronver parse "2024.04.03.1-feature"
-  chronver sort "2024.04.03" "2024.04.01" "2024.04.05"
-  chronver --sort-desc "2024.04.03" "2024.04.01" "2024.04.05"
-  chronver validate "2024.04.03.1"
+  $ chronver compare "2024.04.03" "2024.04.04"
+  $ chronver create
+  $ chronver format "2024-04-03" 5
+  $ chronver increment
+  $ chronver increment deno.json
+  $ chronver parse "2024.04.03.1-feature"
+  $ chronver sort "2024.04.03" "2024.04.01" "2024.04.05"
+  $ chronver --sort-desc "2024.04.03" "2024.04.01" "2024.04.05"
+  $ chronver validate "2024.04.03.1"
 
 MORE INFO:
   ChronVer is calendar-based versioning: YYYY.MM.DD[.CHANGESET][-FEATURE|-break]
