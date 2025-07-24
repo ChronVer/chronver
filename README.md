@@ -47,7 +47,8 @@ deno add jsr:@chronver/chronver
 import { ChronVer } from "jsr:@chronver/chronver";
 
 # install CLI globally
-deno install --allow-read --allow-write --global --name chronver https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/cli.ts --config deno.json
+# "resolver diagnostics" will appear when using this method but it's fine
+deno install --allow-read --allow-write --global --name chronver https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/cli.ts --import-map https://raw.githubusercontent.com/ChronVer/chronver/refs/heads/primary/deno.json
 ```
 
 ### npm/bun
@@ -80,7 +81,7 @@ ChronVer is especially powerful with [husky](https://typicode.github.io/husky/).
   }
 ```
 
-Now every time you push a commit, the `version` in `package.json` gets updated. Please note that you'll need to install the `chronver` CLI globally using the Deno method above or the path method below.
+Now every time you push a commit, the `version` in `package.json` gets updated. Please note that you'll need to install the `chronver` CLI globally using the Deno method above or the path method below (recommended).
 
 ### macOS/Linux
 
