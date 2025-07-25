@@ -330,14 +330,6 @@ None in this release.
 
 
 
-## Ports
-
-### Rust
-
-- https://github.com/dnaka91/chronver / https://crates.io/crates/chronver
-
-
-
 ## Development
 
 ```sh
@@ -366,6 +358,14 @@ just test
 just build
 # compile CLI to an executable
 ```
+
+
+
+## Ports
+
+### Rust
+
+- https://github.com/dnaka91/chronver / https://crates.io/crates/chronver
 
 
 
